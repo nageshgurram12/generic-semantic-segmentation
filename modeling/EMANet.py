@@ -1,6 +1,6 @@
 from functools import partial
 import math
-
+import torch.utils.model_zoo as model_zoo
 import numpy as np
 
 import torch
@@ -144,22 +144,23 @@ class ResNet(nn.Module):
 
         return x
 
-
+        
 def resnet(n_layers, stride):
     layers = {
         50: [3, 4, 6, 3],
         101: [3, 4, 23, 3],
         152: [3, 8, 36, 3],
     }[n_layers]
+    
     pretrained_path = {
-        50: './models/resnet50-ebb6acbb.pth',
-        101: './models/resnet101-2a57e44d.pth',
-        152: './models/resnet152-0d43d698.pth',
+        50: './pretrained/resnet50-ebb6acbb.pth',
+        101: './pretrained/resnet101-2a57e44d.pth',
+        152: './pretrained/resnet152-0d43d698.pth',
     }[n_layers]
 
     net = ResNet(Bottleneck, layers=layers, stride=stride)
-    #state_dict = torch.load(pretrained_path)
-    #net.load_state_dict(state_dict, strict=False)
+    state_dict = torch.load(pretrained_path)
+    net.load_state_dict(state_dict, strict=False)
 
     return net
 
@@ -262,7 +263,7 @@ class EMAU(nn.Module):
 
 class EMANet(nn.Module):
     ''' Implementation of EMANet (ICCV 2019 Oral).'''
-    def __init__(self, n_classes, n_layers, sync_bn=True, stride=8):
+    def __init__(self, n_classes, n_layers, sync_bn=True, stride=8, mom=0.9):
         global norm_layer
         
         super(EMANet, self).__init__()
@@ -292,6 +293,7 @@ class EMANet(nn.Module):
         # Put the criterion inside the model to make GPU load balanced
         self.crit = CrossEntropyLoss2d(ignore_index=255, \
             reduction='none')
+        self.mom = mom
 
     def forward(self, img, lbl=None, size=None):
         x = self.extractor(img)
@@ -311,7 +313,27 @@ class EMANet(nn.Module):
         else:
             return pred
         '''
-        return pred, mu
+        mu = mu.mean(dim=0, keepdim=True)
+        self.emau.mu *= self.mom
+        self.emau.mu += mu * (1 - self.mom)
+        
+        return pred
+    
+    def get_params(self, key):
+        if key == '1x':
+            for m in self.named_modules():
+                if isinstance(m[1], nn.Conv2d):
+                    yield m[1].weight
+        if key == '1y':
+            for m in self.named_modules():
+                if isinstance(m[1], _BatchNorm):
+                    if m[1].weight is not None:
+                        yield m[1].weight
+        if key == '2x':
+            for m in self.named_modules():
+                if isinstance(m[1], nn.Conv2d) or isinstance(m[1], _BatchNorm):
+                    if m[1].bias is not None:
+                        yield m[1].bias
 
 class CrossEntropyLoss2d(nn.Module):
     def __init__(self, weight=None, reduction='none', ignore_index=-1):

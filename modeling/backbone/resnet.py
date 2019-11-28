@@ -72,7 +72,15 @@ class ResNet(nn.Module):
         self._init_weight()
 
         if pretrained:
-            self._load_pretrained_model(model_arch)
+            #self._load_pretrained_model(model_arch)
+                pretrained_path = {
+                    50: './pretrained/resnet50-ebb6acbb.pth',
+                    101: './pretrained/resnet101-2a57e44d.pth',
+                    152: './pretrained/resnet152-0d43d698.pth',
+                }[model_arch]
+
+                state_dict = torch.load(pretrained_path)
+                self.load_state_dict(state_dict, strict=False)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1, BatchNorm=None):
         downsample = None

@@ -2,6 +2,7 @@ import argparse
 import os
 import numpy as np
 from tqdm import tqdm
+import torch
 
 from mypath import Path
 from dataloaders import make_data_loader
@@ -32,10 +33,7 @@ class Trainer(object):
         make_data_loader(args, **kwargs)
 
         # Define network
-        model = build_model(args, nclass=self.nclass)
-
-        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
-                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
+        model, train_params = build_model(args, nclass=self.nclass)
 
         # Define Optimizer
         optimizer = torch.optim.SGD(train_params, momentum=args.momentum,
@@ -185,7 +183,7 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Segmentation Training")
-    parser.add_argument('--model', type=str, default='Deeplab',
+    parser.add_argument('--model', type=str, default='EMANet',
                         choices=['Deeplab', 'EMANet', 'MyNet'],
                         help="Choose the model")
     parser.add_argument('--backbone', type=str, default='resnet',
