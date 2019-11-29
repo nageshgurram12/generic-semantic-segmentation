@@ -1,4 +1,5 @@
 import math
+import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
@@ -74,8 +75,8 @@ class ResNet(nn.Module):
         if pretrained:
             #self._load_pretrained_model(model_arch)
                 pretrained_path = {
-                    50: './pretrained/resnet50-ebb6acbb.pth',
-                    101: './pretrained/resnet101-2a57e44d.pth',
+                    50: './pretrained/resnet50-19c8e357.pth',
+                    101: './pretrained/resnet101-5d3b4d8f.pth',
                     152: './pretrained/resnet152-0d43d698.pth',
                 }[model_arch]
 

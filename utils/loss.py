@@ -2,21 +2,50 @@ import torch
 import torch.nn as nn
 
 class SegmentationLosses(object):
-    def __init__(self, weight=None, size_average=True, batch_average=True, ignore_index=255, cuda=False):
+    def __init__(self, model='Deeplab', weight=None, size_average=True, 
+                 batch_average=True, ignore_index=255, mf_epoch=10,  cuda=False):
         self.ignore_index = ignore_index
         self.weight = weight
         self.size_average = size_average
         self.batch_average = batch_average
         self.cuda = cuda
+        self.model = model
+        self.mf_epoch = mf_epoch
 
     def build_loss(self, mode='ce'):
         """Choices: ['ce' or 'focal']"""
-        if mode == 'ce':
+        if self.model == 'MFNet':
+            return self.CombinationLoss
+        elif mode == 'ce':
             return self.CrossEntropyLoss
         elif mode == 'focal':
             return self.FocalLoss
         else:
             raise NotImplementedError
+    
+    def CombinationLoss(self, x, x_low_rank, logit, target, epoch=0):
+        n, c, h, w = logit.size()
+        criterion = nn.CrossEntropyLoss(weight=self.weight, ignore_index=self.ignore_index,
+                                        size_average=self.size_average)
+            
+        if self.cuda:
+            criterion = criterion.cuda()
+        
+        loss = criterion(logit, target.long())
+        
+        if self.batch_average:
+            loss /= n
+            
+        if epoch >= self.mf_epoch:
+            criterion2 = nn.MSELoss()
+            if self.cuda:
+                criterion2 = criterion2.cuda()
+            loss2 = criterion2(x, x_low_rank)
+            if self.batch_average:
+                loss2 /= n
+            return loss + 0.1 * loss2
+        
+        return loss 
 
     def CrossEntropyLoss(self, logit, target):
         n, c, h, w = logit.size()

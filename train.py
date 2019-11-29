@@ -52,8 +52,8 @@ class Trainer(object):
             weight = torch.from_numpy(weight.astype(np.float32))
         else:
             weight = None
-        self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda). \
-                    build_loss(mode=args.loss_type)
+        self.criterion = SegmentationLosses(model=args.model, weight=weight, \
+                        cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
         
         # Define Evaluator
@@ -103,7 +103,10 @@ class Trainer(object):
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
             output = self.model(image)
-            loss = self.criterion(output, target)
+            if isinstance(output, tuple):
+                loss = self.criterion(*output, target, epoch)
+            else:
+                loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
             train_loss += loss.item()
@@ -183,8 +186,8 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Segmentation Training")
-    parser.add_argument('--model', type=str, default='EMANet',
-                        choices=['Deeplab', 'EMANet', 'MyNet'],
+    parser.add_argument('--model', type=str, default='MFNet',
+                        choices=['Deeplab', 'EMANet', 'MFNet'],
                         help="Choose the model")
     parser.add_argument('--backbone', type=str, default='resnet',
                         choices=['resnet', 'xception', 'drn', 'mobilenet'],

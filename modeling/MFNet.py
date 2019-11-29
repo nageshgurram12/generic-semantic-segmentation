@@ -1,0 +1,100 @@
+# -*- coding: utf-8 -*-
+import torch
+import torch.nn as nn
+from modeling.aspp import build_aspp
+from modeling.decoder import build_decoder
+from modeling.backbone import build_backbone
+from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+from torch.nn import Parameter
+import math
+import torch.nn.functional as F
+
+class MFNet(nn.Module):
+    def __init__(self, backbone='resnet', output_stride=16, num_classes=21,
+                 sync_bn=True, freeze_bn=False, input_size=33, 
+                 factors=64, mf_epoch=10):
+        super(MFNet, self).__init__()
+        
+        if sync_bn == True:
+            BatchNorm = SynchronizedBatchNorm2d
+        else:
+            BatchNorm = nn.BatchNorm2d
+            
+        if backbone == 'drn':
+            inplanes = 512
+        elif backbone == 'mobilenet':
+            inplanes = 320
+        else:
+            inplanes = 2048
+            
+        self.backbone = build_backbone(backbone, output_stride, BatchNorm)
+        self.decoder = build_decoder(num_classes, backbone, BatchNorm)
+        self.Y = Parameter(torch.Tensor(1, inplanes, factors), requires_grad=True)
+        stdy = 1./((inplanes*factors)**(1/2))
+        self.Y.data.uniform_(-stdy, stdy)    # Initialize
+        
+        self.Z = Parameter(torch.Tensor(1, factors, input_size**2), requires_grad=True)
+        stdz = 1./(((input_size**2)*factors)**(1/2))
+        self.Z.data.uniform_(-stdz, stdz)
+        
+        self.conv1 = nn.Conv2d(inplanes, inplanes, 1)
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(inplanes, 256, 1, bias=False),
+            BatchNorm(256))
+        
+        self.mf_epoch = mf_epoch
+        
+        if freeze_bn:
+            self.freeze_bn()
+        
+    def forward(self, input, epoch=0):
+        x, low_level_feat = self.backbone(input)
+        xin, x_out = x, x
+
+        b, c, h, w = x.size()
+        # x = x.view(b, c, h*w) # b * c * n
+        x_low_rank = self.Y.matmul(self.Z)
+        x_low_rank = x_low_rank.repeat(b, 1, 1)
+        x_low_rank = x_low_rank.view(b, c, h, w)
+        
+        if epoch >= self.mf_epoch:
+            x_out = x_low_rank
+            x_out = x_out + xin
+        
+        x_out = self.conv2(x_out)
+
+        x_out = self.decoder(x_out, low_level_feat)
+        x_out = F.interpolate(x_out, size=input.size()[2:], mode='bilinear',\
+                              align_corners=True)
+            
+        return xin, x_low_rank, x_out
+    
+    
+    def freeze_bn(self):
+        for m in self.modules():
+            if isinstance(m, SynchronizedBatchNorm2d):
+                m.eval()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.eval()
+
+    def get_1x_lr_params(self):
+        modules = [self.backbone]
+        for i in range(len(modules)):
+            for m in modules[i].named_modules():
+                if isinstance(m[1], nn.Conv2d) or isinstance(m[1], SynchronizedBatchNorm2d) \
+                        or isinstance(m[1], nn.BatchNorm2d):
+                    for p in m[1].parameters():
+                        if p.requires_grad:
+                            yield p
+        yield self.Y
+        yield self.Z
+
+    def get_10x_lr_params(self):
+        modules = [self.decoder]
+        for i in range(len(modules)):
+            for m in modules[i].named_modules():
+                if isinstance(m[1], nn.Conv2d) or isinstance(m[1], SynchronizedBatchNorm2d) \
+                        or isinstance(m[1], nn.BatchNorm2d):
+                    for p in m[1].parameters():
+                        if p.requires_grad:
+                            yield p
