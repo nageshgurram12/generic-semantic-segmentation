@@ -36,14 +36,14 @@ class SegmentationLosses(object):
         if self.batch_average:
             loss /= n
             
-        if epoch >= self.mf_epoch:
-            criterion2 = nn.MSELoss()
-            if self.cuda:
-                criterion2 = criterion2.cuda()
-            loss2 = criterion2(x, x_low_rank)
-            if self.batch_average:
-                loss2 /= n
-            return loss + 0.1 * loss2
+        #if epoch >= self.mf_epoch:
+        criterion2 = nn.MSELoss()
+        if self.cuda:
+            criterion2 = criterion2.cuda()
+        loss2 = criterion2(x, x_low_rank)
+        if self.batch_average:
+            loss2 /= n
+        return loss + 0.3 * loss2
         
         return loss 
 

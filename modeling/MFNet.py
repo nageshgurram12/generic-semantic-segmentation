@@ -46,10 +46,10 @@ class MFModule(nn.Module):
         x_low_rank = x_low_rank.repeat(b, 1, 1)
         x_low_rank = x_low_rank.view(b, c, h, w)
         
-        if epoch >= self.mf_epoch:
-            x_out = x_low_rank
+        #if epoch >= self.mf_epoch:
+        #x_out = x_low_rank
         
-        return x_out, x_low_rank
+        return x_low_rank
     
 class MFNet(nn.Module):
     def __init__(self, backbone='resnet', output_stride=16, num_classes=21,
@@ -70,14 +70,14 @@ class MFNet(nn.Module):
             inplanes = 2048
             
         self.backbone = build_backbone(backbone, output_stride, BatchNorm)
-        #self.decoder = build_decoder(num_classes, backbone, BatchNorm)
+        self.decoder = build_decoder(num_classes, backbone, BatchNorm)
 
         self.fc0 = ConvBNReLU(inplanes, 512, 3, 1, 1, 1, BatchNorm)
         inplanes = 512
         self.conv1 = nn.Conv2d(inplanes, inplanes, 1)
         self.conv2 = nn.Sequential(
-            nn.Conv2d(inplanes, inplanes, 1, bias=False),
-            BatchNorm(inplanes)
+            nn.Conv2d(inplanes, 256, 1, bias=False),
+            BatchNorm(256)
             )
         
         self.mf = MFModule(inplanes, input_size, factors, BatchNorm, mf_epoch)
@@ -94,13 +94,14 @@ class MFNet(nn.Module):
         x, low_level_feat = self.backbone(input)
         x = self.fc0(x)
         x = self.conv1(x)
-        x_out, x_low_rank = self.mf(x, epoch)
+        x_low_rank = self.mf(x, epoch)
+        x_out = x_low_rank
         x_out = x_out + x
         x_out = self.conv2(x_out)
-        x_out = self.fc1(x_out)
-        x_out = self.fc2(x_out)
+        #x_out = self.fc1(x_out)
+        #x_out = self.fc2(x_out)
         
-        #x_out = self.decoder(x_out, low_level_feat)
+        x_out = self.decoder(x_out, low_level_feat)
         x_out = F.interpolate(x_out, size=input.size()[2:], mode='bilinear',\
                               align_corners=True)
             
@@ -127,7 +128,7 @@ class MFNet(nn.Module):
         yield self.mf.Z
 
     def get_10x_lr_params(self):
-        modules = []
+        modules = [self.decoder]
         for i in range(len(modules)):
             for m in modules[i].named_modules():
                 if isinstance(m[1], nn.Conv2d) or isinstance(m[1], SynchronizedBatchNorm2d) \
