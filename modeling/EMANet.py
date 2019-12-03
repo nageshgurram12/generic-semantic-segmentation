@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.batchnorm import _BatchNorm
+from modeling.backbone import build_backbone
 
 from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 
@@ -153,8 +154,8 @@ def resnet(n_layers, stride):
     }[n_layers]
     
     pretrained_path = {
-        50: './pretrained/resnet50-ebb6acbb.pth',
-        101: './pretrained/resnet101-2a57e44d.pth',
+        50: './pretrained/resnet50-19c8e357.pth',
+        101: './pretrained/resnet101-5d3b4d8f.pth',
         152: './pretrained/resnet152-0d43d698.pth',
     }[n_layers]
 
@@ -271,7 +272,8 @@ class EMANet(nn.Module):
             norm_layer = SynchronizedBatchNorm2d
         else:
             norm_layer = nn.BatchNorm2d
-            
+           
+        '''
         backbone = resnet(n_layers, stride)
         self.extractor = nn.Sequential(
             backbone.conv1,
@@ -282,7 +284,8 @@ class EMANet(nn.Module):
             backbone.layer2,
             backbone.layer3,
             backbone.layer4)
-
+        '''
+        self.backbone = build_backbone('resnet', 16, norm_layer)
         self.fc0 = ConvBNReLU(2048, 512, 3, 1, 1, 1)
         self.emau = EMAU(512, 64, STAGE_NUM)
         self.fc1 = nn.Sequential(
@@ -296,7 +299,7 @@ class EMANet(nn.Module):
         self.mom = mom
 
     def forward(self, img, lbl=None, size=None):
-        x = self.extractor(img)
+        x, low_feat = self.backbone(img)
         x = self.fc0(x)
         x, mu = self.emau(x)
         x = self.fc1(x)

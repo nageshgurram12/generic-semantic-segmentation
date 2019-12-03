@@ -105,8 +105,10 @@ class Trainer(object):
             output = self.model(image)
             if isinstance(output, tuple):
                 loss = self.criterion(*output, target, epoch)
+                output = output[2]
             else:
                 loss = self.criterion(output, target)
+            
             loss.backward()
             self.optimizer.step()
             train_loss += loss.item()
@@ -147,7 +149,11 @@ class Trainer(object):
                 image, target = image.cuda(), target.cuda()
             with torch.no_grad():
                 output = self.model(image)
-            loss = self.criterion(output, target)
+                if isinstance(output, tuple):
+                    loss = self.criterion(*output, target)
+                    output = output[2]
+                else:
+                    loss = self.criterion(output, target)
             test_loss += loss.item()
             tbar.set_description('Test loss: %.3f' % (test_loss / (i + 1)))
             pred = output.data.cpu().numpy()
@@ -186,7 +192,7 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Segmentation Training")
-    parser.add_argument('--model', type=str, default='MFNet',
+    parser.add_argument('--model', type=str, default='EMANet',
                         choices=['Deeplab', 'EMANet', 'MFNet'],
                         help="Choose the model")
     parser.add_argument('--backbone', type=str, default='resnet',
@@ -300,7 +306,7 @@ def main():
 
 
     if args.checkname is None:
-        args.checkname = 'deeplab-'+str(args.backbone)
+        args.checkname = str(args.model)+'-'+str(args.backbone)
     print(args)
     torch.manual_seed(args.seed)
     trainer = Trainer(args)
