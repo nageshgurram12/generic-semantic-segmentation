@@ -192,7 +192,7 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Segmentation Training")
-    parser.add_argument('--model', type=str, default='EMANet',
+    parser.add_argument('--model', type=str, default='MFNet',
                         choices=['Deeplab', 'EMANet', 'MFNet'],
                         help="Choose the model")
     parser.add_argument('--backbone', type=str, default='resnet',
