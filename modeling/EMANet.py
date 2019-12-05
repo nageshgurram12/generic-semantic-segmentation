@@ -322,6 +322,11 @@ class EMANet(nn.Module):
         
         return pred
     
+    def get_param_count(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        return params
+    
     def get_params(self, key):
         if key == '1x':
             for m in self.named_modules():

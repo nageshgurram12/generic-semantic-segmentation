@@ -5,6 +5,7 @@ from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 from modeling.aspp import build_aspp
 from modeling.decoder import build_decoder
 from modeling.backbone import build_backbone
+import numpy as np
 
 class DeepLab(nn.Module):
     def __init__(self, backbone='resnet', output_stride=16, num_classes=21,
@@ -33,6 +34,11 @@ class DeepLab(nn.Module):
 
         return x
 
+    def get_param_count(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        return params
+    
     def freeze_bn(self):
         for m in self.modules():
             if isinstance(m, SynchronizedBatchNorm2d):

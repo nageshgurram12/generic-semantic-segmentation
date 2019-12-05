@@ -35,6 +35,7 @@ class Trainer(object):
         # Define network
         model, train_params = build_model(args, nclass=self.nclass)
 
+        print("Total params: " + str(model.get_param_count()))
         # Define Optimizer
         optimizer = torch.optim.SGD(train_params, momentum=args.momentum,
                     weight_decay=args.weight_decay, nesterov=args.nesterov)
@@ -192,7 +193,7 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Segmentation Training")
-    parser.add_argument('--model', type=str, default='MFNet',
+    parser.add_argument('--model', type=str, default='EMANet',
                         choices=['Deeplab', 'EMANet', 'MFNet'],
                         help="Choose the model")
     parser.add_argument('--backbone', type=str, default='resnet',
