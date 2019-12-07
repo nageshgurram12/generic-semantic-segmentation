@@ -103,11 +103,11 @@ class MFNet(nn.Module):
         
         if epoch >= self.mf_epoch:
             x_out = x_low_rank
-            x_out = F.relu(x, inplace=True)
+            x_out = F.relu(x_out, inplace=True)
             x_out = x_out + xin
         
         x_out = self.conv2(x_out)
-        x_out = F.relu(x, inplace=True)
+        x_out = F.relu(x_out, inplace=True)
         x_out = self.decoder(x_out, low_level_feat)
         x_out = F.interpolate(x_out, size=input.size()[2:], mode='bilinear',\
                               align_corners=True)
