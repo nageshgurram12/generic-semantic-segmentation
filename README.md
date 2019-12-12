@@ -18,8 +18,9 @@ Prerequisites:
 and put them in ./pretrained directory
 
 Results:
-    MFNet(my work)  Deeplabv3+   EMANet
-  --------------------------------------
-mIoU    68.97       68.98        70.05
-fwIoU   85.71       85.31        85.32
-Params  29.73M      40.45M       34.65M
+
+|Metric| MFNet(my work) | Deeplabv3+ |  EMANet |
+|------|----------------|------------| --------|
+|mIoU|    68.97     |  68.98     |   70.05 |
+|fwIoU|   85.71     |  85.31     |   85.32 |
+|Params|  29.73M    |  40.45M    |   34.65M |
