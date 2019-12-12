@@ -6,7 +6,7 @@ Semantic Segmentation with 3 different networks:
 How to Run:
 
 train.py --model="MFNet" 
-
+[refer train.py arguments for others]
 
 Prerequisites:
 1) Install pytorch and all dependecies
@@ -16,3 +16,10 @@ Prerequisites:
     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
 and put them in ./pretrained directory
+
+Results:
+    MFNet(my work)  Deeplabv3+   EMANet
+  --------------------------------------
+mIoU    68.97       68.98        70.05
+fwIoU   85.71       85.31        85.32
+Params  29.73M      40.45M       34.65M
