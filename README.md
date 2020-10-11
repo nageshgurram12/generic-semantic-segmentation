@@ -11,3 +11,5 @@ train.py --model="MFNet"
 Prerequisites:
 1) Install pytorch and all dependecies
 2) Set dataset paths in mypath.py
+
+### Refer Project Report.pdf for more details
